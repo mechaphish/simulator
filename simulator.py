@@ -200,7 +200,7 @@ class Team(object):
     def __init__(self, name, services, povs=None):
         self.name = name
         self.services = services                        # Fielded services
-        self.povs = povs if povs is not None else []    # Active PoVs
+        self.povs = povs if povs is not None else {}    # Active PoVs
 
 
 class Simulation(object):
