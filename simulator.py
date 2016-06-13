@@ -247,7 +247,7 @@ class Simulation(object):
                     consensus = round_.successful[service.name].count(team.name)
                     povcount = PoVCount(consensus,
                                         service.reference_povs_successful,
-                                        service.reference_povs)
+                                        service.reference_povs_total)
 
                     if service.is_fielded(round_no):
                         functionality = service.functionality
