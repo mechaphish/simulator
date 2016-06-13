@@ -254,7 +254,7 @@ class Simulation(object):
                     else:
                         functionality = 0
 
-                    score = Score(povcount, service.overhead, functionality)
+                    score = Score(functionality, service.overhead, povcount)
                     round_.scores[team.name].append(score)
 
                 scores[team.name] = sum(s.total for s in
