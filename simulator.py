@@ -209,7 +209,7 @@ class Simulation(object):
         # TODO: Services and povs should be moved outside of this constructor to
         #       be more flexible. In fact, instantiated beforehand based on
         #       probability functions, like "PerfectTeam" etc.
-        self.services = {name: Service(name, binary, 0) for
+        self.services = {name: Service(name, Binary(binary), 0) for
                          name, binary in services.items()}
         self.teams = {name: Team(name, self.services) for name in teams}
 
