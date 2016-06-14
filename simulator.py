@@ -1,7 +1,9 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
 """Simulate the CGC game."""
+
+from __future__ import print_function
 
 import random
 import sys
