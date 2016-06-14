@@ -263,14 +263,41 @@ class Simulation(object):
             yield scores
 
 
+def plot(round_scores):
+    """Plots the scores nicely.
+
+    Expects an ordered list of scores per round, which should be maps from team
+    to the team's score for this round.
+    """
+    import matplotlib.pyplot as plt
+
+    teams = defaultdict(list)
+
+    for round_score in round_scores:
+        for team, score in round_score.items():
+            teams[team].append(score)
+
+    for team, scores in teams.items():
+        plt.plot(range(len(round_scores)), scores, label=team)
+
+    legend = plt.legend(loc='upper left', fontsize='x-large')
+    legend.get_frame().set_facecolor('#d9ccff')
+
+    plt.show()
+
+
 def main(args):     # pylint: disable=unused-argument
     teams = ['Whiskey', 'Tango', 'Foxtrot']
     services = {'SFTP': 'sftp_0000',
                 'HTTP': 'http_0000',
                 'SMTP': 'smtp_0000'}
     simulation = Simulation(teams, services)
-    for scores in simulation.run(seed=0x1337):
+    rounds = list(simulation.run(seed=0x1337))
+
+    for scores in rounds:
         print(scores)
+
+    plot(rounds)
 
     return 0
 
