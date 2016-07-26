@@ -19,9 +19,9 @@ class Team(object):
         self.services = services                        # Fielded services
         self._povs = povs if povs is not None else []   # Active PoVs
         
-        self.type1_probability = type1_probability # Probability that a type1 POV is found for a binary
-        self.type2_probability = type2_probability # Probability that a type2 POV is found for a binary
-        self.patching_probability = patching_probability
+        self.type1_probability = float(type1_probability) # Probability that a type1 POV is found for a binary
+        self.type2_probability = float(type2_probability) # Probability that a type2 POV is found for a binary
+        self.patching_probability = float(patching_probability)
         self.logger = logging.getLogger("team")
         
     @property
@@ -59,7 +59,10 @@ class Team(object):
                     pov_found = True
                     break
             if not pov_found:
-                if random.random() < max(self.type1_probability, self.type2_probability):
+                r = random.random()
+                p = max(self.type1_probability, self.type2_probability)
+                self.logger.debug("r %f p %f" % (r, p))
+                if r < p:
                     new_pov = PoV(service.binary, service, random.choice((1,2)))
                     self._povs.append(new_pov)
                     self.logger.debug("Team %s generates PoV for service %s and binary %s fielded by %s" % \

@@ -276,8 +276,6 @@ Usage: This script simulates a competition
 
     for team in teams.values():
         logger.debug(str(team))
-    for service in services.values():
-        logger.debug(str(service))
     
     simulation = Simulation(services, teams)
     rounds = simulation.run(num_rounds=num_rounds, seed=seed)
