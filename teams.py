@@ -10,11 +10,20 @@ import logging
 from models import Binary, Service
 from povs import PoV
 
-__author__ = "Kevin Borgolte <kevinbo@cs.ucsb.edu>, Giovanni Vigna <vigna@cs.ucbs.edu>"
+__author__ = "Kevin Borgolte <kevinbo@cs.ucsb.edu>, Giovanni Vigna <vigna@cs.ucsb.edu>"
 
 
 class Team(object):
-    def __init__(self, name, services, type1_probability=0.0, type2_probability=0.0, patching_probability=0.0, povs=None):
+    def __init__(self, name, services, type1_probability=0.0, 
+                                       type2_probability=0.0, 
+                                       patching_probability=0.0, 
+                                       overhead_memory_range=(0.0,0.0),
+                                       overhead_time_range=(0.0,0.0),
+                                       overhead_size_range=(0.0,0.0),
+                                       functionality_range=(0.0,0.0),
+                                       protection_range=(1.0,1.0),
+                                       reaction=0.0,
+                                       povs=None):
         self.name = name
         self.services = services                        # Fielded services
         self._povs = povs if povs is not None else []   # Active PoVs
@@ -22,6 +31,12 @@ class Team(object):
         self.type1_probability = float(type1_probability) # Probability that a type1 POV is found for a binary
         self.type2_probability = float(type2_probability) # Probability that a type2 POV is found for a binary
         self.patching_probability = float(patching_probability)
+        self.overhead_memory_range = overhead_memory_range
+        self.overhead_time_range = overhead_time_range
+        self.overhead_size_range = overhead_size_range
+        self.functionality_range = functionality_range
+        self.protection_range = protection_range
+        self.reaction = reaction
         self.logger = logging.getLogger("team")
         
     @property
@@ -37,12 +52,22 @@ class Team(object):
                 
                 bname, bversion = service.binary.name.split('_')
                 new_bversion = int(bversion) + 1  
-                binary_name = "%s_%04d" % (bname, new_bversion) 
-                binary = Binary(binary_name)
-                self.logger.debug("Team %s generates patch %s for service %s" % \
+                binary_name = "%s_%04d" % (bname, new_bversion)
+                overhead_memory = random.uniform(self.overhead_memory_range[0], self.overhead_memory_range[1]) 
+                overhead_time = random.uniform(self.overhead_time_range[0], self.overhead_time_range[1]) 
+                overhead_size = random.uniform(self.overhead_size_range[0], self.overhead_size_range[1]) 
+                functionality = random.uniform(self.functionality_range[0], self.functionality_range[1]) 
+                protection = random.uniform(self.protection_range[0], self.protection_range[1]) 
+                binary = Binary(binary_name,
+                                overhead_time=overhead_time,
+                                overhead_size=overhead_size,
+                                overhead_memory=overhead_memory,
+                                functionality=functionality,
+                                protection=protection)
+                self.logger.debug("Team %s generates patched binary for service %s" % \
                                   (self.name, 
-                                   binary_name, 
                                    service.name))
+                self.logger.debug(str(binary))
                 service.field(binary, round_num)
                 
                 

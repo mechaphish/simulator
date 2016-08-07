@@ -44,7 +44,7 @@ class Simulation(object):
         self.teams = teams
         self.logger = logging.getLogger("simulation")
     
-    def run(self, num_rounds=50, seed=None):
+    def run(self, num_rounds=50, seed=None, deployment_rate=1.0):
         """Simulate the game.
 
         For reproducibility, you can specify the seed for the random number
@@ -55,10 +55,23 @@ class Simulation(object):
         rounds = list()
         for round_no in range(num_rounds):
             self.logger.debug("Starting round %d" % round_no)
-            scores = {}
-
+            
             round_ = Round(round_no)
-
+            
+            # Decides which Challenge Sets to field
+            for service_name, service in self.services.items():
+                if not service.is_active(round_no):
+                    deploy = random.random()
+                    self.logger.debug("Deployment %f with threshold %f" % (deploy, deployment_rate))
+                    if deploy < deployment_rate:
+                        self.logger.debug("Activating service %s" % service_name)
+                        service.activate(round_no)
+                        for team in self.teams.values():
+                            for team_service_name, team_service in team.services.items():
+                                if team_service_name == service_name:
+                                    team_service.activate(round_no)
+                
+            
             # Run PoVs of each team
             for team in self.teams.values():
                 self.logger.debug("Executing the PoVs of team %s (%d)" % \
@@ -74,6 +87,7 @@ class Simulation(object):
                     targets = (t for t in self.teams.values()
                                if t != team and
                                t.services[pov.service.name].binary == pov.binary and
+                               t.services[pov.service.name].is_active(round_no) and
                                t.services[pov.service.name].is_fielded(round_no))
                     
                     for target in targets:
@@ -82,7 +96,7 @@ class Simulation(object):
                                            target.name,
                                            pov.service.name,
                                            pov.service.binary.name))
-                        if pov.successful:
+                        if pov.successful(target):
                             self.logger.debug("PoV succeeded!")
                             round_.pov_successful(team, pov, target)
                         else:
@@ -93,6 +107,20 @@ class Simulation(object):
                 self.logger.debug("Evaluating scores for team %s" % team.name)
                 for service in team.services.values():
                     self.logger.debug("Evaluating scores for service %s" % service.name)
+                    if not service.is_active(round_no):
+                        score = Score(service.name, 
+                                      0, 
+                                      0,
+                                      0,
+                                      0, 
+                                      0, 
+                                      0, 
+                                      len(self.teams.values()))
+                        
+                        round_.scores[team.name].append(score)
+                        self.logger.debug("Service is inactive, values is 0")
+                        
+                        continue
                     
                     attacks_performed = round_.successful_attacks_performed(service.name, team.name)
                     attacks_received = round_.successful_attacks_received(service.name, team.name)
@@ -105,13 +133,18 @@ class Simulation(object):
                     #                    service.reference_povs_total)
 
                     if service.is_fielded(round_no):
-                        functionality = service.functionality
+                        functionality = service.binary.functionality
                     else:
                         functionality = 0
                     
-                    overhead = service.overhead
-                    
-                    score = Score(service.name, functionality, overhead, attacks_performed, attacks_received, len(self.teams.values()))
+                    score = Score(service.name, 
+                                  functionality, 
+                                  service.binary.overhead_time,
+                                  service.binary.overhead_memory,
+                                  service.binary.overhead_size, 
+                                  attacks_performed, 
+                                  attacks_received, 
+                                  len(self.teams.values()))
                     round_.scores[team.name].append(score)
                     
                     self.logger.debug("Score %f: Availability: %f min(performance %f, functionality %f), Security: %f, Evaluation: %f" % \
@@ -130,6 +163,9 @@ class Simulation(object):
                 self.logger.debug("Determining behavior for team %s" % team.name)
                 for service in team.services.values():
                     self.logger.debug("Determining behavior for service %s" % service.name)
+                    if not service.is_active(round_no):
+                        self.logger.debug("Service is inactive, skipping")
+                        continue
                     team.generate_patch(service.name, round_no)
                     team.generate_pov(service.name, round_no, self.teams)
                 self.logger.debug(str(team))
@@ -143,7 +179,7 @@ def plot(rounds):
     Expects an ordered list of rounds.
     """
     import matplotlib.pyplot as plt
-
+    logger = logging.getLogger("plotting")
     teams = defaultdict(list)
 
     plt.figure(figsize=(20,10))
@@ -157,17 +193,19 @@ def plot(rounds):
     
       
     for team, scores in teams.items():
+        logger.debug("Team %s: %s" % (team, scores))
         # transforms scores in cumulative format
         scores = numpy.cumsum(scores)
-        plt.plot(range(len(rounds)), scores, label=team)
+        round_values = range(len(rounds))
+        logger.debug("Rounds: %s" % round_values)
+                           
+        plt.plot(round_values, scores, label=team)
 
     legend = plt.legend(loc='upper left', fontsize='x-large')
     legend.get_frame().set_facecolor('#d9ccff')
     plt.ylabel("Points")
     plt.xlabel("Rounds")
     
-    # TODO: add axis labels
-
     plt.show()
 
 
@@ -212,6 +250,10 @@ Usage: This script simulates a competition
     teams = dict()
     num_rounds = int(conf.get('simulator', 'rounds'))
     try:
+        deployment_rate = float(conf.get('simulator', 'deployment_rate'))
+    except:
+        deployment_rate = 1.0
+    try:
         seed = int(conf.get('simulator', 'seed'))
     except:
         seed = 0x1337
@@ -241,15 +283,39 @@ Usage: This script simulates a competition
             try: 
                 type1_probability = conf.get(section, 'type1_probability')
             except:
-                type1_probability = 0
+                type1_probability = 1.0
             try: 
                 type2_probability = conf.get(section, 'type2_probability')
             except:
-                type2_probability = 0
+                type2_probability = 1.0
             try: 
                 patching_probability = conf.get(section, 'patching_probability')
             except:
-                patching_probability = 0
+                patching_probability = 1.0
+            try: 
+                overhead_memory_range = [float(x) for x in conf.get(section, 'overhead_memory').split(",")]
+            except:
+                overhead_memory_range = (0.0, 0.0)
+            try: 
+                overhead_time_range = [float(x) for x in conf.get(section, 'overhead_time').split(",")]
+            except:
+                overhead_time_range = (0.0, 0.0)
+            try: 
+                overhead_size_range = [float(x) for x in conf.get(section, 'overhead_size').split(",")]
+            except:
+                overhead_size_range = (0.0, 0.0)
+            try: 
+                functionality_range = [float(x) for x in conf.get(section, 'functionality').split(",")]
+            except:
+                functionality_range = (1.0, 1.0)
+            try: 
+                protection_range = [float(x) for x in conf.get(section, 'protection').split(",")]
+            except:
+                protection_range = (1.0, 1.0)
+            try: 
+                reaction = float(conf.get(section, 'reaction'))
+            except:
+                reaction = 0.0
             
             # Creates a deep copy of the services
             team_services = dict()
@@ -265,7 +331,13 @@ Usage: This script simulates a competition
                                    team_services, 
                                    type1_probability=type1_probability, 
                                    type2_probability=type2_probability, 
-                                   patching_probability=patching_probability)
+                                   patching_probability=patching_probability,
+                                   overhead_memory_range=overhead_memory_range,
+                                   overhead_time_range=overhead_time_range,
+                                   overhead_size_range=overhead_size_range,
+                                   functionality_range=functionality_range,
+                                   protection_range=protection_range,
+                                   reaction=reaction)
             if len(teams.values()) == num_teams:
                 break
             
@@ -278,11 +350,11 @@ Usage: This script simulates a competition
         logger.debug(str(team))
     
     simulation = Simulation(services, teams)
-    rounds = simulation.run(num_rounds=num_rounds, seed=seed)
+    rounds = simulation.run(num_rounds=num_rounds, seed=seed, deployment_rate=deployment_rate)
 
-    #for scores in rounds:
-    #    print(scores)
-
+    for team in teams.values():
+        logger.debug(str(team))
+    
     plot(rounds)
 
     return 0

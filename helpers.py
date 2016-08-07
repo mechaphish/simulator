@@ -8,7 +8,7 @@ from __future__ import division
 import random
 import string
 
-__author__ = "Kevin Borgolte <kevinbo@cs.ucsb.edu>, Giovanni Vigna <vigna@cs.ucbs.edu>"
+__author__ = "Kevin Borgolte <kevinbo@cs.ucsb.edu>, Giovanni Vigna <vigna@cs.ucsb.edu>"
 
 # ======
 # Strings

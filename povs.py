@@ -3,26 +3,30 @@
 
 """PoV models."""
 
-__author__ = "Kevin Borgolte <kevinbo@cs.ucsb.edu>, Giovanni Vigna <vigna@cs.ucbs.edu>"
+__author__ = "Kevin Borgolte <kevinbo@cs.ucsb.edu>, Giovanni Vigna <vigna@cs.ucsb.edu>"
 
 from helpers import perfect
-
+import random
 
 class PoV(object):
-    def __init__(self, binary, service, kind, f_success=perfect):
+    def __init__(self, binary, service, kind):
         self.binary = binary        # Target binary
         self.service = service      # Target service
         self.kind = kind            # Type (1: pc control, 2: page read)
-        self.f_success = f_success  # Probability of success (0 - 1)
+        
 
-    @property
-    def successful(self):
-        return self.f_success()
+    def successful(self, target):
+        protection = target.services[self.service.name].binary.protection
+        r = random.random()
+        if r > protection:
+            return 1
+        else:
+            return 0
 
+        
     def __str__(self):
-        s = "PoV Service: %s Binary: %s Kind: %d Success: %f" % \
+        s = "PoV Service: %s Binary: %s Kind: %d" % \
             (self.service.name,
              self.binary.name,
-             self.kind,
-             self.f_success())
+             self.kind)
         return s

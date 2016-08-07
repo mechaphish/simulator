@@ -5,17 +5,26 @@
 
 from collections import namedtuple
 
-__author__ = "Kevin Borgolte <kevinbo@cs.ucsb.edu>, Giovanni Vigna <vigna@cs.ucbs.edu>"
+__author__ = "Kevin Borgolte <kevinbo@cs.ucsb.edu>, Giovanni Vigna <vigna@cs.ucsb.edu>"
 
 
 class Score(object):
-    def __init__(self, service_name, functionality_factor, overhead, attack_performed, attack_received, num_teams):
-        self.num_teams = num_teams
+    def __init__(self, service_name, 
+                       functionality, 
+                       overhead_time,
+                       overhead_memory, 
+                       overhead_size,
+                       attack_performed, 
+                       attack_received, 
+                       num_teams):
         self.service = service_name
-        self.functionality_factor = functionality_factor
-        self.overhead = overhead
+        self._functionality = functionality
+        self.overhead_time = overhead_time
+        self.overhead_memory = overhead_memory
+        self.overhead_size = overhead_size
         self.attack_performed = attack_performed
         self.attack_received = attack_received
+        self.num_teams = num_teams
         
 
     @property
@@ -30,12 +39,12 @@ class Score(object):
 
     @property
     def performance(self):
-        perf_factor = 1 + max(0.25 * self.overhead.file_size,
-                              self.overhead.memory_usage,
-                              self.overhead.execution_time)
-        if 0 <= perf_factor < 1.10:
+        perf_factor = 1 + max(0.25 * self.overhead_size,
+                              self.overhead_memory,
+                              self.overhead_time)
+        if 0 <= perf_factor < 1.05:
             return 1
-        elif 1.10 <= perf_factor < 1.62:
+        elif 1.05 <= perf_factor < 1.62:
             return (perf_factor - 1) ** (-4)
         elif 1.62 <= perf_factor < 2:
             return -0.493 * perf_factor + 0.986
@@ -44,13 +53,13 @@ class Score(object):
 
     @property
     def functionality(self):
-        if self.functionality_factor == 1:
+        if self._functionality == 1:
             return 1
-        elif 0.40 <= self.functionality_factor < 1:
-            return (2 - self.functionality_factor) ** (-4)
-        elif 0 < self.functionality_factor < 0.40:
-            return 0.381 * self.functionality_factor
-        elif self.functionality_factor == 0:
+        elif 0.40 <= self._functionality < 1:
+            return (2 - self._functionality) ** (-4)
+        elif 0 < self._functionality < 0.40:
+            return 0.381 * self._functionality
+        elif self._functionality == 0:
             return 0
 
     #@property

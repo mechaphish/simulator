@@ -22,19 +22,30 @@ class Binary(object):
     and 0..1 for the functionality factor.
     """
 
-    def __init__(self, name, f_execution_time_overhead=no_overhead,
-                 f_file_size_overhead=no_overhead,
-                 f_memory_usage_overhead=no_overhead,
-                 f_functionality_factor=perfect):
+    def __init__(self, name, 
+                 overhead_time=0.0,
+                 overhead_size=0.0,
+                 overhead_memory=0.0,
+                 functionality=1.0,
+                 protection=1.0):
         self.name = name
-        self.f_execution_time_overhead = f_execution_time_overhead
-        self.f_memory_usage_overhead = f_memory_usage_overhead
-        self.f_file_size_overhead = f_file_size_overhead
-        self.f_functionality_factor = f_functionality_factor
+        self.overhead_time = overhead_time
+        self.overhead_memory = overhead_memory
+        self.overhead_size = overhead_size
+        self.functionality = functionality
+        self.protection = protection
         self.logger = logging.getLogger("binary")
 
-Overhead = namedtuple('Overhead', ['execution_time', 'file_size',
-                                   'memory_usage'])
+    def __str__(self):
+        s = "Binary Name: %s ot: %f om: %f os: %f f: %f" % \
+            (self.name,
+             self.overhead_time,
+             self.overhead_memory,
+             self.overhead_size,
+             self.functionality)
+        return s
+#Overhead = namedtuple('Overhead', ['execution_time', 'file_size',
+#                                   'memory_usage'])
 
 
 class Service(object):
@@ -44,18 +55,28 @@ class Service(object):
     deployed, when it was last deployed, how many reference PoVs for the
     service exist, and whether they were successful.
     """
-    def __init__(self, name, binary, round_,
+    def __init__(self, name, binary,
                  f_reference_povs_successful=atmost_80pct,
                  reference_povs_total=4):
         self.name = name
         self.binary = binary
-        self.round_introduced = round_
+        self.round_introduced = None
         self.round_last_submit = None
         self.logger = logging.getLogger("service")
-        #self.f_reference_povs_successful = f_reference_povs_successful
-        #self.reference_povs_total = reference_povs_total
-
+    
+    def activate(self, round_):
+        self.logger.debug("Activating service %s at round %d" % (self.name, round_))
+        self.round_introduced = round_
+    
+    def is_active(self, round_):
+        if not self.round_introduced:
+            return False
+        if round_ < self.round_introduced:
+            return False
+        return True
+        
     def field(self, binary, round_):
+        self.logger.debug("Fielding binary %s for service %s" % (binary.name, self.name))
         self.round_last_submit = round_
         self.binary = binary
 
@@ -72,20 +93,6 @@ class Service(object):
             return round_ > (1 + max(self.round_last_submit,        # A157
                                      self.round_introduced + 1))    # A163
 
-    @property
-    def functionality(self):
-        return self.binary.f_functionality_factor()
-
-    @property
-    def overhead(self):
-        return Overhead(self.binary.f_execution_time_overhead(),
-                        self.binary.f_file_size_overhead(),
-                        self.binary.f_memory_usage_overhead())
-
-    #@property
-    #def reference_povs_successful(self):
-    #    """Return a number between 0 and self.reference_povs_total."""
-    #    return self.f_reference_povs_successful(self.reference_povs_total)
     def __str__(self):
         s = "Service Name: %s Binary: %s Introduced: %s Last submit: %s" % \
             (self.name,
